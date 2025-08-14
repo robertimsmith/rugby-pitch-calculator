@@ -22,6 +22,7 @@ interface Point {
 interface CalculationResult {
   distanceToNearestGoal: number
   angleWidth: number
+  apparentWidth: number // Added apparent width of posts
   selectedPoint: Point
   nearestGoal: "top" | "bottom"
 }
@@ -70,6 +71,26 @@ export default function RugbyPitchApp() {
     return angleRadians * (180 / Math.PI) // Convert to degrees
   }
 
+  const calculateApparentWidth = (point: Point, goalY: number): number => {
+    const distance = calculateDistance(point, { x: 0, y: goalY })
+
+    // Using trigonometry: apparent width = actual width * cos(viewing angle)
+    // But we want the linear width as it appears from the side
+    const leftPost = { x: -GOAL_POST_WIDTH / 2, y: goalY }
+    const rightPost = { x: GOAL_POST_WIDTH / 2, y: goalY }
+
+    // Calculate the perpendicular distance from point to goal line
+    const perpendicularDistance = Math.abs(goalY - point.y)
+
+    // If we're directly in front, apparent width equals actual width
+    // As we move to the side, the apparent width decreases
+    const sideOffset = Math.abs(point.x)
+    const viewingAngle = Math.atan2(sideOffset, perpendicularDistance)
+
+    // Apparent width considering the viewing angle
+    return GOAL_POST_WIDTH * Math.cos(viewingAngle)
+  }
+
   const handlePitchClick = (event: React.MouseEvent<SVGSVGElement>) => {
     const pitchPoint = svgToPitch(event.clientX, event.clientY)
 
@@ -89,9 +110,12 @@ export default function RugbyPitchApp() {
     // Calculate angle width for nearest goal
     const angleWidth = calculateAngleWidth(pitchPoint, nearestGoalY)
 
+    const apparentWidth = calculateApparentWidth(pitchPoint, nearestGoalY)
+
     setCalculation({
       distanceToNearestGoal,
       angleWidth,
+      apparentWidth, // Added apparent width to result
       selectedPoint: pitchPoint,
       nearestGoal,
     })
@@ -277,6 +301,12 @@ export default function RugbyPitchApp() {
                       <h3 className="font-semibold text-green-800 mb-2">Goal Post Angle</h3>
                       <p className="text-2xl font-bold text-blue-600">{calculation.angleWidth.toFixed(1)}°</p>
                       <p className="text-xs text-gray-500 mt-1">Wider angles make easier kicks</p>
+                    </div>
+
+                    <div>
+                      <h3 className="font-semibold text-green-800 mb-2">Apparent Post Width</h3>
+                      <p className="text-2xl font-bold text-purple-600">{calculation.apparentWidth.toFixed(1)}m</p>
+                      <p className="text-xs text-gray-500 mt-1">How wide posts appear from this angle</p>
                     </div>
                   </div>
                 ) : (
